@@ -1,18 +1,41 @@
 using System;
+using System.Collections;
+// ↑ Permite utilizar IEnumerator e IEnumerable sin <T>.
+
 using System.Collections.Generic;
+// ↑ Permite utilizar List<T>, IEnumerable<T> e IEnumerator<T>.
+
 using GarageApp.Models;
 
 namespace GarageApp.Services;
 
-public class Garage
+public class Garage<T> : IEnumerable<T> where T : Vehicle
+//           ↑ CLASE GENÉRICA:
+//             T representa el tipo de vehículos que elegiremos.
+//
+//                      ↑ INTERFAZ:
+//                        Permite recorrer este garaje con foreach.
+//
+//                                          ↑ RESTRICCIÓN:
+//                                            T debe ser Vehicle
+//                                            o una clase que herede de Vehicle.
 {
-    // Lista privada: contiene los vehículos estacionados.
-    private List<Vehicle> _vehicles;
+    private readonly List<T> _vehicles;
+    // ↑ CAMPO PRIVADO: guarda el acceso a la lista de vehículos.
+    // List<T>: la lista acepta elementos del tipo elegido para T.
+    // readonly: no podemos reemplazar esta lista después del constructor.
+    // Sí podemos añadir o retirar vehículos de ella.
 
-    // Máximo de vehículos permitidos en el garaje.
     public int Capacity { get; }
+    // ↑ PROPIEDAD: permite consultar la capacidad.
+    // Se guarda inicialmente en el constructor.
+    // Otro código no puede cambiarla directamente.
 
     public Garage(int capacity)
+    //     ↑ CONSTRUCTOR:
+    //       Tiene el mismo nombre que la clase: Garage.
+    //       Aquí NO escribimos Garage<T>.
+    //       Recibe la cantidad máxima de vehículos.
     {
         if (capacity <= 0)
         {
@@ -20,22 +43,26 @@ public class Garage
                 "Garage capacity must be greater than zero.");
         }
 
-        // Guardamos el límite y creamos una lista vacía.
         Capacity = capacity;
-        _vehicles = new List<Vehicle>();
+
+        _vehicles = new List<T>();
+        // ↑ Creamos la lista vacía cuando se crea el garaje.
     }
 
-    public Vehicle? FindByRegistrationNumber(string registrationNumber)
+    public T? FindByRegistrationNumber(string registrationNumber)
+    //     ↑ Devuelve un vehículo del tipo T.
+    //      ? permite devolver null si no encuentra ninguno.
     {
-        // Evita llamar a Trim sobre un texto nulo.
         if (string.IsNullOrWhiteSpace(registrationNumber))
         {
             return null;
         }
 
-        foreach (Vehicle vehicle in _vehicles)
+        foreach (T vehicle in _vehicles)
+        //       ↑ Tipo elegido para este garaje.
+        //         vehicle permite acceder al vehículo de esta vuelta.
+        //                 in indica qué colección recorremos.
         {
-            // Compara las matrículas sin distinguir mayúsculas.
             if (string.Equals(
                 vehicle.RegistrationNumber,
                 registrationNumber.Trim(),
@@ -45,36 +72,38 @@ public class Garage
             }
         }
 
-        // No encontramos el vehículo.
         return null;
     }
 
-    public bool TryPark(Vehicle vehicle)
+    public bool TryPark(T vehicle)
+    // ↑ MÉTODO: intenta estacionar el vehículo recibido.
+    // Devuelve true si lo añade y false si no puede.
     {
         if (vehicle == null)
         {
             return false;
         }
 
-        // Count indica cuántos vehículos están estacionados.
         if (_vehicles.Count >= Capacity)
+        // ↑ Count: cantidad de vehículos que contiene la lista.
         {
             return false;
         }
 
-        // Rechaza una matrícula que ya existe en el garaje.
         if (FindByRegistrationNumber(vehicle.RegistrationNumber) != null)
+        // ↑ Evita estacionar dos vehículos con la misma matrícula.
         {
             return false;
         }
 
-        // Add añade el vehículo y aumenta Count automáticamente.
         _vehicles.Add(vehicle);
+        // ↑ Añade el vehículo a la lista privada.
 
         return true;
     }
 
     public bool TryRemove(string registrationNumber)
+    // ↑ MÉTODO: intenta retirar el vehículo con esa matrícula.
     {
         if (string.IsNullOrWhiteSpace(registrationNumber))
         {
@@ -83,16 +112,16 @@ public class Garage
 
         for (int i = 0; i < _vehicles.Count; i++)
         {
-            Vehicle vehicle = _vehicles[i];
+            T vehicle = _vehicles[i];
+            // ↑ Consulta el vehículo situado en la posición i.
 
             if (string.Equals(
                 vehicle.RegistrationNumber,
                 registrationNumber.Trim(),
                 StringComparison.OrdinalIgnoreCase))
             {
-                // Elimina el elemento situado en el índice i.
-                // Count disminuye automáticamente.
                 _vehicles.RemoveAt(i);
+                // ↑ Retira el vehículo de esa posición.
 
                 return true;
             }
@@ -101,27 +130,30 @@ public class Garage
         return false;
     }
 
-    public List<Vehicle> GetVehicles()
+    public List<T> GetVehicles()
+    // ↑ MÉTODO: entrega una copia de la lista.
     {
-        // Devuelve una copia para no exponer la lista privada.
-        return new List<Vehicle>(_vehicles);
+        return new List<T>(_vehicles);
+        // Cambiar esta copia no añade ni retira elementos
+        // de la lista privada del garaje.
+        // Los vehículos contenidos siguen siendo los mismos objetos.
     }
 
     public int CountByType(string vehicleType)
+    // ↑ MÉTODO: cuenta los vehículos del tipo solicitado.
     {
         if (string.IsNullOrWhiteSpace(vehicleType))
         {
             return 0;
         }
 
-        // Aquí sí necesitamos un contador:
-        // contamos solo los vehículos del tipo solicitado.
         int count = 0;
 
-        foreach (Vehicle vehicle in _vehicles)
+        foreach (T vehicle in _vehicles)
         {
-            // Obtiene el nombre del tipo real: Car, Bus, Boat...
             string typeName = vehicle.GetType().Name;
+            // ↑ Obtiene el nombre de la clase del objeto:
+            // Car, Motorcycle, Bus, Boat o Airplane.
 
             if (string.Equals(
                 typeName,
@@ -135,18 +167,19 @@ public class Garage
         return count;
     }
 
-    public List<Vehicle> Search(
+    public List<T> Search(
         string registrationNumber,
         string color,
         int? numberOfWheels,
         string vehicleType)
+    // ↑ MÉTODO: busca vehículos que cumplan todos los filtros elegidos.
+    // int? permite recibir un número de ruedas o null.
+    // null significa que no se filtra por ruedas.
     {
-        // Empieza vacía; añadiremos las coincidencias con Add.
-        List<Vehicle> results = new List<Vehicle>();
+        List<T> results = new List<T>();
 
-        foreach (Vehicle vehicle in _vehicles)
+        foreach (T vehicle in _vehicles)
         {
-            // Texto vacío: no aplicar el filtro de matrícula.
             if (!string.IsNullOrWhiteSpace(registrationNumber))
             {
                 if (!string.Equals(
@@ -154,12 +187,11 @@ public class Garage
                     registrationNumber.Trim(),
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    // No coincide: pasa al siguiente vehículo.
                     continue;
+                    // ↑ No coincide: pasa al siguiente vehículo.
                 }
             }
 
-            // Texto vacío: no aplicar el filtro de color.
             if (!string.IsNullOrWhiteSpace(color))
             {
                 if (!string.Equals(
@@ -171,9 +203,8 @@ public class Garage
                 }
             }
 
-            // null: no filtrar por ruedas.
-            // Cero: buscar vehículos con cero ruedas.
             if (numberOfWheels.HasValue)
+            // ↑ Comprueba si recibimos un número en lugar de null.
             {
                 if (vehicle.NumberOfWheels != numberOfWheels.Value)
                 {
@@ -181,7 +212,6 @@ public class Garage
                 }
             }
 
-            // Texto vacío: no aplicar el filtro de tipo.
             if (!string.IsNullOrWhiteSpace(vehicleType))
             {
                 if (!string.Equals(
@@ -193,11 +223,34 @@ public class Garage
                 }
             }
 
-            // Solo llega aquí si cumple todos los filtros activos.
             results.Add(vehicle);
+            // ↑ Solo añadimos vehículos que cumplen
+       
         }
 
-        // La lista ya contiene exactamente las coincidencias.
         return results;
+    }
+
+    public IEnumerator<T> GetEnumerator()
+    // ↑ MÉTODO EXIGIDO POR IEnumerable<T>.
+    //
+    // IEnumerator<T> es el encargado de controlar un recorrido:
+    // permite avanzar y consultar el vehículo actual.
+    //
+    // foreach utiliza este método para obtener ese encargado.
+    {
+        return _vehicles.GetEnumerator();
+        // ↑ Aprovechamos el recorrido que ya ofrece List<T>.
+        // No creamos otra lista ni copiamos los vehículos.
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    // ↑ Atiende la versión no genérica de IEnumerable,
+    // que también forma parte de la exigencia de IEnumerable<T>.
+    //
+    // IEnumerable. indica a qué interfaz pertenece este método.
+    {
+        return GetEnumerator();
+        // ↑ Reutiliza el método de arriba.
     }
 }

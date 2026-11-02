@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using GarageApp.Interfaces;
 using GarageApp.Models;
 using GarageApp.Services;
 
 namespace GarageApp.UI;
 
-public class ConsoleUI
+public class ConsoleUI : IUI
+//     ↑ CLASE.        ↑ Cumple la exigencia de IUI: ofrecer Run().
 {
-    // Program llama a este método para iniciar la interfaz.
     public void Run()
+    // ↑ MÉTODO PÚBLICO: Program lo llama para iniciar la interfaz.
     {
         try
         {
@@ -17,6 +19,7 @@ public class ConsoleUI
         }
         catch (OperationCanceledException)
         {
+            // Si se cierra la entrada de la terminal, termina con un mensaje.
             Console.WriteLine();
             Console.WriteLine("Application closed.");
         }
@@ -24,28 +27,32 @@ public class ConsoleUI
 
     private void RunGarage()
     {
-        Console.WriteLine("Welcome to Garage 2.0!");
+        Console.WriteLine("Welcome to Garage 3.0!");
 
         int capacity = ReadInteger("Enter the garage capacity: ", 1);
 
-        // Crea un garaje con una lista vacía y la capacidad indicada.
-        Garage garage = new Garage(capacity);
+        IHandler handler = new GarageHandler(capacity);
+        // ↑ TIPO de la variable: la interfaz IHandler.
+        //       ↑ VARIABLE que permite acceder al handler.
+        //                 ↑ Crea el objeto GarageHandler.
+        //
+        // El constructor de GarageHandler crea Garage<Vehicle>.
+        // El menú pide las operaciones mediante IHandler.
 
-        LoadSampleVehicles(garage);
+        LoadSampleVehicles(handler);
 
         bool running = true;
 
         while (running)
         {
-            // GetVehicles devuelve una lista: utilizamos Count.
-            int occupiedSpaces = garage.GetVehicles().Count;
+            int occupiedSpaces = handler.OccupiedSpaces;
 
             Console.WriteLine();
-            Console.WriteLine("=== Garage 2.0 ===");
-            Console.WriteLine($"Capacity: {garage.Capacity}");
+            Console.WriteLine("=== Garage 3.0 ===");
+            Console.WriteLine($"Capacity: {handler.Capacity}");
             Console.WriteLine($"Occupied spaces: {occupiedSpaces}");
             Console.WriteLine(
-                $"Free spaces: {garage.Capacity - occupiedSpaces}");
+                $"Free spaces: {handler.Capacity - occupiedSpaces}");
 
             Console.WriteLine("1. List parked vehicles");
             Console.WriteLine("2. Park a vehicle");
@@ -57,25 +64,26 @@ public class ConsoleUI
             string choice = ReadText("Choose an option: ");
 
             switch (choice)
+            // ↑ Elige qué instrucciones ejecutar según la opción recibida.
             {
                 case "1":
-                    ShowVehicles(garage.GetVehicles());
+                    ShowVehicles(handler.GetVehicles());
                     break;
 
                 case "2":
-                    ParkVehicle(garage);
+                    ParkVehicle(handler);
                     break;
 
                 case "3":
-                    RemoveVehicle(garage);
+                    RemoveVehicle(handler);
                     break;
 
                 case "4":
-                    ShowVehicleCounts(garage);
+                    ShowVehicleCounts(handler);
                     break;
 
                 case "5":
-                    SearchMenu(garage);
+                    SearchMenu(handler);
                     break;
 
                 case "0":
@@ -90,7 +98,8 @@ public class ConsoleUI
         }
     }
 
-    private void LoadSampleVehicles(Garage garage)
+    private void LoadSampleVehicles(IHandler handler)
+    // ↑ Recibe el handler para pedirle que estacione los ejemplos.
     {
         string answer;
 
@@ -112,8 +121,6 @@ public class ConsoleUI
             return;
         }
 
-        // Este array está en ConsoleUI, no dentro de Garage.
-        // Por eso puede conservarse según el enunciado.
         Vehicle[] samples =
         {
             new Car("CAR123", "Black", 4, "Gasoline"),
@@ -122,12 +129,14 @@ public class ConsoleUI
             new Bus("BUS123", "Red", 6, 40),
             new Boat("BOA123", "Blue", 0, 6.5m)
         };
+        // ↑ ARRAY: reúne los cinco objetos de ejemplo.
+        // Cada new crea un vehículo y ejecuta su constructor.
 
         int added = 0;
 
         foreach (Vehicle vehicle in samples)
         {
-            if (garage.TryPark(vehicle))
+            if (handler.TryPark(vehicle))
             {
                 added++;
             }
@@ -135,7 +144,6 @@ public class ConsoleUI
 
         Console.WriteLine($"Sample vehicles parked: {added}.");
 
-        // samples es un array: aquí utilizamos Length.
         if (added < samples.Length)
         {
             Console.WriteLine(
@@ -144,9 +152,9 @@ public class ConsoleUI
         }
     }
 
-    private void ParkVehicle(Garage garage)
+    private void ParkVehicle(IHandler handler)
     {
-        if (garage.GetVehicles().Count >= garage.Capacity)
+        if (handler.OccupiedSpaces >= handler.Capacity)
         {
             Console.WriteLine("The garage is full.");
             return;
@@ -176,7 +184,7 @@ public class ConsoleUI
 
         string registrationNumber = ReadText("Registration number: ");
 
-        if (garage.FindByRegistrationNumber(registrationNumber) != null)
+        if (handler.FindByRegistrationNumber(registrationNumber) != null)
         {
             Console.WriteLine(
                 "A vehicle with this registration number is already parked.");
@@ -188,8 +196,9 @@ public class ConsoleUI
 
         try
         {
-            // Apuntará al vehículo creado en el switch.
             Vehicle vehicle;
+            // ↑ VARIABLE: permitirá acceder al objeto creado abajo.
+            // Puede acceder a cualquiera de las subclases de Vehicle.
 
             switch (choice)
             {
@@ -252,11 +261,13 @@ public class ConsoleUI
                     return;
             }
 
-            if (garage.TryPark(vehicle))
+            if (handler.TryPark(vehicle))
+            // ↑ UI pide al handler que estacione el objeto.
+            // El handler llama al garaje y devuelve true o false.
             {
                 Console.WriteLine("Vehicle parked successfully.");
             }
-            else if (garage.GetVehicles().Count >= garage.Capacity)
+            else if (handler.OccupiedSpaces >= handler.Capacity)
             {
                 Console.WriteLine("Could not park: the garage is full.");
             }
@@ -267,19 +278,20 @@ public class ConsoleUI
             }
         }
         catch (ArgumentException error)
+        // ↑ Atiende los datos rechazados por los constructores.
         {
             Console.WriteLine(error.Message);
         }
     }
 
-    private void RemoveVehicle(Garage garage)
+    private void RemoveVehicle(IHandler handler)
     {
         Console.WriteLine();
         Console.WriteLine("=== Remove a vehicle ===");
 
         string registrationNumber = ReadText("Registration number: ");
 
-        if (garage.TryRemove(registrationNumber))
+        if (handler.TryRemove(registrationNumber))
         {
             Console.WriteLine("Vehicle removed successfully.");
         }
@@ -290,7 +302,6 @@ public class ConsoleUI
         }
     }
 
-    // Ahora recibe una lista, igual que la que devuelve Garage.
     private void ShowVehicles(List<Vehicle> vehicles)
     {
         if (vehicles.Count == 0)
@@ -306,6 +317,7 @@ public class ConsoleUI
     }
 
     private void ShowVehicle(Vehicle vehicle)
+    // ↑ MÉTODO: recibe un vehículo y muestra sus datos.
     {
         Console.WriteLine();
         Console.WriteLine($"Type: {vehicle.GetType().Name}");
@@ -313,8 +325,8 @@ public class ConsoleUI
         Console.WriteLine($"Color: {vehicle.Color}");
         Console.WriteLine($"Wheels: {vehicle.NumberOfWheels}");
 
-        // Identifica el tipo concreto para mostrar su propiedad propia.
         if (vehicle is Car car)
+        // ↑ Comprueba si es Car y permite acceder a él como car.
         {
             Console.WriteLine($"Fuel type: {car.FuelType}");
         }
@@ -338,19 +350,19 @@ public class ConsoleUI
         }
     }
 
-    private void ShowVehicleCounts(Garage garage)
+    private void ShowVehicleCounts(IHandler handler)
     {
         Console.WriteLine();
         Console.WriteLine("=== Vehicle counts ===");
-        Console.WriteLine($"Cars: {garage.CountByType("Car")}");
+        Console.WriteLine($"Cars: {handler.CountByType("Car")}");
         Console.WriteLine(
-            $"Motorcycles: {garage.CountByType("Motorcycle")}");
-        Console.WriteLine($"Airplanes: {garage.CountByType("Airplane")}");
-        Console.WriteLine($"Buses: {garage.CountByType("Bus")}");
-        Console.WriteLine($"Boats: {garage.CountByType("Boat")}");
+            $"Motorcycles: {handler.CountByType("Motorcycle")}");
+        Console.WriteLine($"Airplanes: {handler.CountByType("Airplane")}");
+        Console.WriteLine($"Buses: {handler.CountByType("Bus")}");
+        Console.WriteLine($"Boats: {handler.CountByType("Boat")}");
     }
 
-    private void SearchMenu(Garage garage)
+    private void SearchMenu(IHandler handler)
     {
         bool searching = true;
 
@@ -370,7 +382,7 @@ public class ConsoleUI
                     string registrationNumber = ReadText(
                         "Registration number: ");
 
-                    Vehicle? vehicle = garage.FindByRegistrationNumber(
+                    Vehicle? vehicle = handler.FindByRegistrationNumber(
                         registrationNumber);
 
                     if (vehicle == null)
@@ -385,7 +397,7 @@ public class ConsoleUI
                     break;
 
                 case "2":
-                    SearchWithFilters(garage);
+                    SearchWithFilters(handler);
                     break;
 
                 case "0":
@@ -399,7 +411,7 @@ public class ConsoleUI
         }
     }
 
-    private void SearchWithFilters(Garage garage)
+    private void SearchWithFilters(IHandler handler)
     {
         Console.WriteLine();
         Console.WriteLine("Leave a filter empty to skip it.");
@@ -409,8 +421,8 @@ public class ConsoleUI
 
         string color = ReadText("Color: ", true);
 
-        // null significa que no se aplica el filtro de ruedas.
         int? numberOfWheels = null;
+        // ↑ null: no se ha elegido un filtro de ruedas.
 
         while (true)
         {
@@ -452,8 +464,7 @@ public class ConsoleUI
             Console.WriteLine("Enter one of the listed types.");
         }
 
-        // Search devuelve una lista de coincidencias.
-        List<Vehicle> results = garage.Search(
+        List<Vehicle> results = handler.Search(
             registrationNumber,
             color,
             numberOfWheels,
@@ -466,6 +477,8 @@ public class ConsoleUI
     }
 
     private string ReadText(string prompt, bool allowEmpty = false)
+    // ↑ MÉTODO: muestra la pregunta y recibe el texto escrito.
+    // allowEmpty indica si se acepta una respuesta vacía.
     {
         while (true)
         {
@@ -473,13 +486,13 @@ public class ConsoleUI
 
             string? input = Console.ReadLine();
 
-            // La entrada cerrada termina la aplicación de forma controlada.
             if (input == null)
             {
                 throw new OperationCanceledException();
             }
 
             input = input.Trim();
+            // ↑ Quita los espacios al principio y al final.
 
             if (allowEmpty || input != "")
             {
@@ -496,9 +509,10 @@ public class ConsoleUI
         {
             string input = ReadText(prompt);
 
-            // TryParse evita una excepción si se escriben letras.
             if (int.TryParse(input, out int number) &&
                 number >= minimum)
+            // ↑ Intenta convertir el texto en un número entero.
+            // Solo lo acepta si también cumple el mínimo.
             {
                 return number;
             }
@@ -514,7 +528,6 @@ public class ConsoleUI
         {
             string input = ReadText(prompt);
 
-            // Usa punto decimal, independientemente del idioma del sistema.
             if (decimal.TryParse(
                 input,
                 NumberStyles.AllowDecimalPoint |
