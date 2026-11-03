@@ -8,10 +8,10 @@ using GarageApp.Services;
 namespace GarageApp.UI;
 
 public class ConsoleUI : IUI
-//     ↑ CLASE.        ↑ Cumple la exigencia de IUI: ofrecer Run().
+//     ↑ CLASE.        ↑ Cumple la exigencia de IUI: ofrecer Run()
 {
     public void Run()
-    // ↑ MÉTODO PÚBLICO: Program lo llama para iniciar la interfaz.
+    // ↑ MÉTODO PÚBLICO: Program lo llama para iniciar la interfaz
     {
         try
         {
@@ -36,8 +36,8 @@ public class ConsoleUI : IUI
         //       ↑ VARIABLE que permite acceder al handler.
         //                 ↑ Crea el objeto GarageHandler.
         //
-        // El constructor de GarageHandler crea Garage<Vehicle>.
-        // El menú pide las operaciones mediante IHandler.
+        // El constructor de GarageHandler crea Garage<Vehicle>
+        // El menú pide las operaciones mediante IHandler
 
         LoadSampleVehicles(handler);
 
